@@ -1,89 +1,148 @@
 #!/bin/bash
 
+display_usage(){
+    echo "$(basename "$0") [-h] [-d <string>] -k <string> -- download fresh udger-php data file"
+    echo "";
+    echo "where:"
+    echo "    -k   Set subscription key"
+    echo "    -d   Set download directory"
+    echo "    -h   Show this help text"
+}
 
 SUBSCRIPTION_KEY=""
 DOWNLOAD_DIR="."
-LOG_FILE="udger.log"
-DATA_FORMAT="udgerdb_v3.dat"
-DATA_FORMAT_SHA1="udgerdb_v3_dat.sha1"
+DATA_FILE="udgerdb_v3.dat"
+DATA_FILE_SHA1="udgerdb_v3_dat.sha1"
 
 CURL=$(which curl 2> /dev/null)
 WGET=$(which wget 2> /dev/null)
-DIFF="/usr/bin/diff"
-DATE="/usr/bin/date"
-RM="/usr/bin/rm"
-LN="/usr/bin/ln"
-GUNZIP="/usr/bin/gunzip"
-BASENAME="/usr/bin/basename"
-SHA1SUM="/usr/bin/sha1sum"
+DIFF=$(which diff 2> /dev/null)
+DATE=$(which date 2> /dev/null)
+MV=$(which mv 2> /dev/null)
+RM=$(which rm 2> /dev/null)
+LN=$(which ln 2> /dev/null)
+GUNZIP=$(which zip 2> /dev/null)
+BASENAME=$(which basename 2> /dev/null)
+SHA1SUM=$(which sha1sum 2> /dev/null)
 
 
-if [ ! -n "$SUBSCRIPTION_KEY" ] || [ ! -n "$DOWNLOAD_DIR" ] || [ ! -n "$LOG_FILE" ] || [ ! -n "$DATA_FORMAT" ] || [ ! -n "$DATA_FORMAT_SHA1" ] || [ ! -e $DIFF ] || [ ! -e $DATE ] || [ ! -e $RM ] || [ ! -e $LN ] || [ ! -e $LN ]; then
-    echo "Please fill necessary information: Subscription key, download dir, log file, data format, data format sha1, path to diff, date, rm, ln and gunzip."
+if [ "$#" -lt 1 ]; then
+    display_usage
     exit 1
 fi
 
+while getopts ":hk:d:" opt; do
+  case $opt in
+    k)
+      SUBSCRIPTION_KEY=${OPTARG}
+      ;;
+    d)
+      DOWNLOAD_DIR=${OPTARG}
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      exit 1
+      ;;
+    h | *) # Display help.
+      display_usage
+      exit 0
+      ;;
+  esac
+done
+
+VERSION_FILE=$DOWNLOAD_DIR/version
+VERSION_FILE_TMP=$DOWNLOAD_DIR/version.tmp
+
+echo "";
+echo "SUBSCRIPTION_KEY: "$SUBSCRIPTION_KEY;
+echo "DOWNLOAD_DIR: "$DOWNLOAD_DIR;
+echo "DATA_FILE: "$DATA_FILE;
+echo "DATA_FILE_SHA1: "$DATA_FILE_SHA1;
+echo "VERSION_FILE: "$VERSION_FILE;
+echo "VERSION_FILE_TMP: "$VERSION_FILE_TMP;
+echo "";
+
 SNAPSHOT_URL="http://data.udger.com/"$SUBSCRIPTION_KEY
 
-
-touch $DOWNLOAD_DIR/version
-/bin/mv $DOWNLOAD_DIR/version $DOWNLOAD_DIR/version.old
+echo "Base URL: "$SNAPSHOT_URL
 
 if [ "x$CURL" != "x" ]; then
-    # Use cURL method
     echo "Updating via CURL"
-    $CURL -sSfR -o "$DOWNLOAD_DIR/version" "$SNAPSHOT_URL/version"
+    $CURL -sSfR -o "$VERSION_FILE_TMP" "$SNAPSHOT_URL/version"
 
 elif [ "x$WGET" != "x" ]; then
-    # Use wget method
     echo "Updating via WGET"
-    $WGET -N -P "$DOWNLOAD_DIR" "$SNAPSHOT_URL/version"
+    $WGET -N -P -O "$VERSION_FILE_TMP" "$SNAPSHOT_URL/version"
 
 else
-    echo "No supported download method.  Please install 'curl' or 'wget'."
-    echo `$DATE` " No supported download method.  Please install 'curl' or 'wget'." >> $LOG_FILE
+    echo "Download failed. Please install 'curl' or 'wget'"
     exit 2
 fi
 
 
-diff $DOWNLOAD_DIR/version $DOWNLOAD_DIR/version.old > /dev/null
-if [ "$?" = "1" ]; then
-    echo "Updating data"
-    echo `$DATE` " Updating data" >> $LOG_FILE
 
-    FILENAME=$DOWNLOAD_DIR/$DATA_FORMAT.$(head -n 1 $DOWNLOAD_DIR/version)
-    FILENAME_SHA1=$DOWNLOAD_DIR/$DATA_FORMAT_SHA1.$(head -n 1 $DOWNLOAD_DIR/version)
+## start file download and update versions
+start_download(){
+    FILENAME=$DOWNLOAD_DIR/$DATA_FILE.$(head -n 1 $VERSION_FILE_TMP)
+    FILENAME_SHA1=$DOWNLOAD_DIR/$DATA_FILE_SHA1.$(head -n 1 $VERSION_FILE_TMP)
 
     if [ "x$CURL" != "x" ]; then
-        $CURL -sSfR -o "$FILENAME" "$SNAPSHOT_URL/$DATA_FORMAT"
-        $CURL -sSfR -o "$FILENAME_SHA1" "$SNAPSHOT_URL/$DATA_FORMAT_SHA1"
+        $CURL -sSfR -o "$FILENAME" "$SNAPSHOT_URL/$DATA_FILE"
+        $CURL -sSfR -o "$FILENAME_SHA1" "$SNAPSHOT_URL/$DATA_FILE_SHA1"
     else
-        $WGET -N -O "$FILENAME" "$SNAPSHOT_URL/$DATA_FORMAT"
-        $WGET -N -O "$FILENAME_SHA1" "$SNAPSHOT_URL/$DATA_FORMAT_SHA1"
+        $WGET -N -O "$FILENAME" "$SNAPSHOT_URL/$DATA_FILE"
+        $WGET -N -O "$FILENAME_SHA1" "$SNAPSHOT_URL/$DATA_FILE_SHA1"
     fi
 
-    if [[ $DATA_FORMAT =~ .*gz.* ]]; then
-        $GUNZIP -c $FILENAME > $DOWNLOAD_DIR/`$BASENAME $DATA_FORMAT .gz`.$(head -n 1 $DOWNLOAD_DIR/version)
+    if [[ $DATA_FILE =~ .*gz.* ]]; then
+        $GUNZIP -c $FILENAME > $DOWNLOAD_DIR/`$BASENAME $DATA_FILE .gz`.$(head -n 1 $VERSION_FILE_TMP)
         $RM $FILENAME
     fi
 
-    FILENAME=$DOWNLOAD_DIR/`$BASENAME $DATA_FORMAT .gz`.$(head -n 1 $DOWNLOAD_DIR/version)
+    FILENAME=$DOWNLOAD_DIR/`$BASENAME $DATA_FILE .gz`.$(head -n 1 $VERSION_FILE_TMP)
     SHA1SUM_OUT=`$SHA1SUM $FILENAME`
 
 
     if [[ $SHA1SUM_OUT == *$(head -n 1 $FILENAME_SHA1)* ]]; then
-	echo "sum is ok"
-	$RM $DOWNLOAD_DIR/`$BASENAME $DATA_FORMAT .gz`
-	$LN -s $DOWNLOAD_DIR/`$BASENAME $DATA_FORMAT .gz`.$(head -n 1 $DOWNLOAD_DIR/version) $DOWNLOAD_DIR/`$BASENAME $DATA_FORMAT .gz`
-        echo "Data downloaded sucesfully"
-        echo `$DATE` " Data downloaded sucesfully" >> $LOG_FILE
+	echo "Checksum ok"
+	$RM $DOWNLOAD_DIR/`$BASENAME $DATA_FILE .gz`
+	$LN -s $DOWNLOAD_DIR/`$BASENAME $DATA_FILE .gz`.$(head -n 1 $VERSION_FILE_TMP) $DOWNLOAD_DIR/`$BASENAME $DATA_FILE .gz`
+        echo "Data downloaded sucesfully: "$DATA_FILE
     else
-	echo "Problem with checksum"
-        echo `$DATE` " Problem with checksum" >> $LOG_FILE
+	echo "Checksum mismatch"
 	exit 1
     fi
+}
+
+## check version
+if [ -f $VERSION_FILE ]; then
+    ## compare the remote and local versions
+    diff $VERSION_FILE_TMP $VERSION_FILE > /dev/null
+
+    if [ "$?" = "1" ]; then
+        echo "Different version available, start download" ## TODO: check if remote is really newer
+        start_download
+    else
+        echo "Data file is up to date"
+    fi
 else
-    echo "Data are current"
-    echo `$DATE` " Data are current" >> $LOG_FILE
-    exit 1
+    echo "No previous version found, start download"
+     start_download
+fi
+
+## Update version file
+if [ -f $VERSION_FILE_TMP ]; then
+    $MV $VERSION_FILE_TMP $VERSION_FILE;
+fi
+
+
+## Print version
+if [ -f $VERSION_FILE ]; then
+    echo "Current version is" `cat $VERSION_FILE`
+else
+    echo "No previous version found"
 fi

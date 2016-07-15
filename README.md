@@ -8,11 +8,21 @@ udger-updater.sh performs downloading of data file v3.
 - Released under the GNU (LGPL v.3)
 
 ### Usage
-- download 
-- set in configuration
-- run udger-updater.sh
-- We recommend that you run udger-updater regularly (about once a day) using the Cron
 
+Check file permissions
+
+```
+chmod +x udger-updater.sh
+```
+
+Run updater
+
+```
+udger-updater.sh -k your_subscription_key
+```
+
+See help (-h) for more details.
+It recommended to check for updates on a daily basis.
 
 ### Author
 The Udger.com Team (info@udger.com)

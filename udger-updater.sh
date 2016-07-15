@@ -66,6 +66,11 @@ echo "VERSION_FILE: "$VERSION_FILE;
 echo "VERSION_FILE_TMP: "$VERSION_FILE_TMP;
 echo "";
 
+if [ ! -d "$DOWNLOAD_DIR" ]; then
+    echo "Download direcory does not exist"
+    exit 1;
+fi
+
 SNAPSHOT_URL="http://data.udger.com/"$SUBSCRIPTION_KEY
 
 echo "Base URL: "$SNAPSHOT_URL

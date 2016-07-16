@@ -56,6 +56,8 @@ done
 
 VERSION_FILE=$DOWNLOAD_DIR/version
 VERSION_FILE_TMP=$DOWNLOAD_DIR/version.tmp
+SNAPSHOT_URL="http://data.udger.com/"$SUBSCRIPTION_KEY
+VERSION_URL=$SNAPSHOT_URL/version
 
 echo "";
 echo "SUBSCRIPTION_KEY: "$SUBSCRIPTION_KEY;
@@ -71,23 +73,23 @@ if [ ! -d "$DOWNLOAD_DIR" ]; then
     exit 1;
 fi
 
-SNAPSHOT_URL="http://data.udger.com/"$SUBSCRIPTION_KEY
-
 echo "Base URL: "$SNAPSHOT_URL
 
+## download remote version file
 if [ "x$CURL" != "x" ]; then
     echo "Updating via CURL"
-    $CURL -sSfR -o "$VERSION_FILE_TMP" "$SNAPSHOT_URL/version"
+    $CURL -sSfR -o "$VERSION_FILE_TMP" "$VERSION_URL"
+    if [ $? -ne 0 ]; then { echo "CURL Failed, aborting: $VERSION_URL" ; exit 1; } fi
 
 elif [ "x$WGET" != "x" ]; then
     echo "Updating via WGET"
-    $WGET -N -P -O "$VERSION_FILE_TMP" "$SNAPSHOT_URL/version"
+    $WGET -N -P -O "$VERSION_FILE_TMP" "$VERSION_URL"
+    if [ $? -ne 0 ]; then { echo "WGET Failed, aborting: $VERSION_URL" ; exit 1; } fi
 
 else
     echo "Download failed. Please install 'curl' or 'wget'"
     exit 2
 fi
-
 
 
 ## start file download and update versions

@@ -18,7 +18,8 @@ chmod +x udger-updater.sh
 Run updater
 
 ```
-udger-updater.sh -k your_subscription_key
+./udger-updater.sh -k your_subscription_key
+
 ```
 
 See help (-h) for more details.

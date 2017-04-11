@@ -56,7 +56,7 @@ done
 
 VERSION_FILE=$DOWNLOAD_DIR/version
 VERSION_FILE_TMP=$DOWNLOAD_DIR/version.tmp
-SNAPSHOT_URL="http://data.udger.com/"$SUBSCRIPTION_KEY
+SNAPSHOT_URL="https://data.udger.com/"$SUBSCRIPTION_KEY
 VERSION_URL=$SNAPSHOT_URL/version
 
 echo "";

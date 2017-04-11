@@ -16,8 +16,6 @@ DATA_FILE_SHA1="udgerdb_v3_dat.sha1"
 
 CURL=$(which curl 2> /dev/null)
 WGET=$(which wget 2> /dev/null)
-DIFF=$(which diff 2> /dev/null)
-DATE=$(which date 2> /dev/null)
 MV=$(which mv 2> /dev/null)
 RM=$(which rm 2> /dev/null)
 LN=$(which ln 2> /dev/null)
@@ -60,12 +58,12 @@ SNAPSHOT_URL="https://data.udger.com/"$SUBSCRIPTION_KEY
 VERSION_URL=$SNAPSHOT_URL/version
 
 echo "";
-echo "SUBSCRIPTION_KEY: "$SUBSCRIPTION_KEY;
-echo "DOWNLOAD_DIR: "$DOWNLOAD_DIR;
-echo "DATA_FILE: "$DATA_FILE;
-echo "DATA_FILE_SHA1: "$DATA_FILE_SHA1;
-echo "VERSION_FILE: "$VERSION_FILE;
-echo "VERSION_FILE_TMP: "$VERSION_FILE_TMP;
+echo "SUBSCRIPTION_KEY: $SUBSCRIPTION_KEY"
+echo "DOWNLOAD_DIR: $DOWNLOAD_DIR"
+echo "DATA_FILE: $DATA_FILE"
+echo "DATA_FILE_SHA1: $DATA_FILE_SHA1"
+echo "VERSION_FILE: $VERSION_FILE"
+echo "VERSION_FILE_TMP: $VERSION_FILE_TMP"
 echo "";
 
 if [ ! -d "$DOWNLOAD_DIR" ]; then
@@ -73,7 +71,7 @@ if [ ! -d "$DOWNLOAD_DIR" ]; then
     exit 1;
 fi
 
-echo "Base URL: "$SNAPSHOT_URL
+echo "Base URL: $SNAPSHOT_URL"
 
 ## download remote version file
 if [ "x$CURL" != "x" ]; then
@@ -94,8 +92,9 @@ fi
 
 ## start file download and update versions
 start_download(){
-    FILENAME=$DOWNLOAD_DIR/$DATA_FILE.$(head -n 1 $VERSION_FILE_TMP)
-    FILENAME_SHA1=$DOWNLOAD_DIR/$DATA_FILE_SHA1.$(head -n 1 $VERSION_FILE_TMP)
+    VERSION=$(head -n 1 "$VERSION_FILE_TMP")
+    FILENAME="$DOWNLOAD_DIR/$DATA_FILE.$VERSION"
+    FILENAME_SHA1="$DOWNLOAD_DIR/$DATA_FILE_SHA1.$VERSION"
 
     if [ "x$CURL" != "x" ]; then
         $CURL -sSfR -o "$FILENAME" "$SNAPSHOT_URL/$DATA_FILE"
@@ -105,20 +104,21 @@ start_download(){
         $WGET -N -O "$FILENAME_SHA1" "$SNAPSHOT_URL/$DATA_FILE_SHA1"
     fi
 
+    BASE_FILE=$($BASENAME $DATA_FILE .gz)
+
     if [[ $DATA_FILE =~ .*gz.* ]]; then
-        $GUNZIP -c $FILENAME > $DOWNLOAD_DIR/`$BASENAME $DATA_FILE .gz`.$(head -n 1 $VERSION_FILE_TMP)
-        $RM $FILENAME
+        $GUNZIP -c "$FILENAME" > "$DOWNLOAD_DIR/$BASE_FILE.$VERSION"
+        $RM "$FILENAME"
     fi
 
-    FILENAME=$DOWNLOAD_DIR/`$BASENAME $DATA_FILE .gz`.$(head -n 1 $VERSION_FILE_TMP)
-    SHA1SUM_OUT=`$SHA1SUM $FILENAME`
+    FILENAME=$DOWNLOAD_DIR/$BASE_FILE.$VERSION
+    SHA1SUM_OUT=$($SHA1SUM "$FILENAME")
 
 
-    if [[ $SHA1SUM_OUT == *$(head -n 1 $FILENAME_SHA1)* ]]; then
-	echo "Checksum ok"
-	$RM $DOWNLOAD_DIR/`$BASENAME $DATA_FILE .gz`
-	$LN -s $DOWNLOAD_DIR/`$BASENAME $DATA_FILE .gz`.$(head -n 1 $VERSION_FILE_TMP) $DOWNLOAD_DIR/`$BASENAME $DATA_FILE .gz`
-        echo "Data downloaded sucesfully: "$DATA_FILE
+    if [[ $SHA1SUM_OUT == *$(head -n 1 "$FILENAME_SHA1")* ]]; then
+        echo "Checksum ok"
+        $LN -sf "$DOWNLOAD_DIR/$BASE_FILE.$VERSION" "$DOWNLOAD_DIR/$BASE_FILE"
+        echo "Data downloaded sucesfully: $DATA_FILE"
     else
 	echo "Checksum mismatch"
 	exit 1
@@ -126,9 +126,9 @@ start_download(){
 }
 
 ## check version
-if [ -f $VERSION_FILE ]; then
+if [ -f "$VERSION_FILE" ]; then
     ## compare the remote and local versions
-    diff $VERSION_FILE_TMP $VERSION_FILE > /dev/null
+    diff "$VERSION_FILE_TMP" "$VERSION_FILE" > /dev/null
 
     if [ "$?" = "1" ]; then
         echo "Different version available, start download" ## TODO: check if remote is really newer
@@ -142,14 +142,14 @@ else
 fi
 
 ## Update version file
-if [ -f $VERSION_FILE_TMP ]; then
-    $MV $VERSION_FILE_TMP $VERSION_FILE;
+if [ -f "$VERSION_FILE_TMP" ]; then
+    $MV "$VERSION_FILE_TMP" "$VERSION_FILE"
 fi
 
 
 ## Print version
-if [ -f $VERSION_FILE ]; then
-    echo "Current version is" `cat $VERSION_FILE`
+if [ -f "$VERSION_FILE" ]; then
+    echo "Current version is $(cat "$VERSION_FILE")"
 else
     echo "No previous version found"
 fi

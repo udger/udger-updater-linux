@@ -1,15 +1,19 @@
 #!/bin/bash
 
 display_usage(){
-    echo "$(basename "$0") [-h] [-d <string>] -k <string> -- download fresh udger-php data file"
-    echo "";
-    echo "where:"
-    echo "    -k   Set subscription key"
-    echo "    -d   Set download directory"
-    echo "    -h   Show this help text"
+    cat <<EOT
+Usage: $(basename "$0") [-h] [-d <string>] -k <string>
+Download a fresh Udger user agent database file
+
+  -k   Set subscription key
+       (or set the UDGER_SUBSCRIPTION_KEY environment variable)
+  -d   Set download directory
+  -h   Show this help text
+
+EOT
 }
 
-SUBSCRIPTION_KEY=""
+SUBSCRIPTION_KEY="${UDGER_SUBSCRIPTION_KEY:-}"
 DOWNLOAD_DIR="."
 DATA_FILE="udgerdb_v3.dat"
 DATA_FILE_SHA1="udgerdb_v3_dat.sha1"
@@ -23,11 +27,6 @@ GUNZIP=$(which zip 2> /dev/null)
 BASENAME=$(which basename 2> /dev/null)
 SHA1SUM=$(which sha1sum 2> /dev/null)
 
-
-if [ "$#" -lt 1 ]; then
-    display_usage
-    exit 1
-fi
 
 while getopts ":hk:d:" opt; do
   case $opt in
@@ -51,6 +50,11 @@ while getopts ":hk:d:" opt; do
       ;;
   esac
 done
+
+if [ -z "$SUBSCRIPTION_KEY" ]; then
+    display_usage
+    exit 1
+fi
 
 VERSION_FILE=$DOWNLOAD_DIR/version
 VERSION_FILE_TMP=$DOWNLOAD_DIR/version.tmp

@@ -111,7 +111,6 @@ start_download(){
     BASE_FILE=$($BASENAME $DATA_FILE .gz)
 
     if [[ $DATA_FILE =~ .*gz.* ]]; then
-        echo gunzipping
         $GUNZIP -c "$FILENAME" > "$DOWNLOAD_DIR/$BASE_FILE.$VERSION"
         $RM "$FILENAME"
     fi

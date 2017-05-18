@@ -121,7 +121,7 @@ start_download(){
 
     if [[ $SHA1SUM_OUT == *$(head -n 1 "$FILENAME_SHA1")* ]]; then
         echo "Checksum ok"
-        $LN -sf "$DOWNLOAD_DIR/$BASE_FILE.$VERSION" "$DOWNLOAD_DIR/$BASE_FILE"
+        $LN -sf "$BASE_FILE.$VERSION" "$DOWNLOAD_DIR/$BASE_FILE"
         echo "Data downloaded sucesfully: $DATA_FILE"
     else
 	echo "Checksum mismatch"

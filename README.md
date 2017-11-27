@@ -5,7 +5,7 @@ udger-updater.sh performs downloading of data file v3.
 - Written in bash
 - Easy configuration
 - Checking version and checksum datafile
-- Released under the GNU (LGPL v.3)
+- Released under the MIT
 
 ### Usage
 

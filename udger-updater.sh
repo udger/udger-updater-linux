@@ -1,14 +1,15 @@
 #!/bin/bash
 
 display_usage(){
-    cat <<EOT
-Usage: $(basename "$0") [-h] [-d <string>] -k <string>
+cat <<EOT
+Usage: $(basename "$0") [-h] [-d <string>] -k <string> [-v4]
 Download a fresh Udger user agent database file
 
-  -k   Set subscription key
-       (or set the UDGER_SUBSCRIPTION_KEY environment variable)
-  -d   Set download directory
-  -h   Show this help text
+-k Set subscription key
+(or set the UDGER_SUBSCRIPTION_KEY environment variable)
+-d Set download directory
+-4 Database version 4
+-h Show this help text
 
 EOT
 }
@@ -28,32 +29,36 @@ BASENAME=$(which basename 2> /dev/null)
 SHA1SUM=$(which sha1sum 2> /dev/null)
 
 
-while getopts ":hk:d:" opt; do
-  case $opt in
-    k)
-      SUBSCRIPTION_KEY=${OPTARG}
-      ;;
-    d)
-      DOWNLOAD_DIR=${OPTARG}
-      ;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2
-      exit 1
-      ;;
-    :)
-      echo "Option -$OPTARG requires an argument." >&2
-      exit 1
-      ;;
-    h | *) # Display help.
-      display_usage
-      exit 0
-      ;;
-  esac
+while getopts ":hk:d:4" opt; do
+case $opt in
+k)
+SUBSCRIPTION_KEY=${OPTARG}
+;;
+d)
+DOWNLOAD_DIR=${OPTARG}
+;;
+4)
+DATA_FILE="udgerdb_v4.dat"
+DATA_FILE_SHA1="udgerdb_v4_dat.sha1"
+;;
+\?)
+echo "Invalid option: -$OPTARG" >&2
+exit 1
+;;
+:)
+echo "Option -$OPTARG requires an argument." >&2
+exit 1
+;;
+h | *) # Display help.
+display_usage
+exit 0
+;;
+esac
 done
 
 if [ -z "$SUBSCRIPTION_KEY" ]; then
-    display_usage
-    exit 1
+display_usage
+exit 1
 fi
 
 VERSION_FILE=$DOWNLOAD_DIR/version
@@ -71,89 +76,89 @@ echo "VERSION_FILE_TMP: $VERSION_FILE_TMP"
 echo "";
 
 if [ ! -d "$DOWNLOAD_DIR" ]; then
-    echo "Download direcory does not exist"
-    exit 1;
+echo "Download direcory does not exist"
+exit 1;
 fi
 
 echo "Base URL: $SNAPSHOT_URL"
 
 ## download remote version file
 if [ "x$CURL" != "x" ]; then
-    echo "Updating via CURL"
-    $CURL -sSfR -o "$VERSION_FILE_TMP" "$VERSION_URL"
-    if [ $? -ne 0 ]; then { echo "CURL Failed, aborting: $VERSION_URL" ; exit 1; } fi
+echo "Updating via CURL"
+$CURL -sSfR -o "$VERSION_FILE_TMP" "$VERSION_URL"
+if [ $? -ne 0 ]; then { echo "CURL Failed, aborting: $VERSION_URL" ; exit 1; } fi
 
 elif [ "x$WGET" != "x" ]; then
-    echo "Updating via WGET"
-    $WGET -N -P -O "$VERSION_FILE_TMP" "$VERSION_URL"
-    if [ $? -ne 0 ]; then { echo "WGET Failed, aborting: $VERSION_URL" ; exit 1; } fi
+echo "Updating via WGET"
+$WGET -N -P -O "$VERSION_FILE_TMP" "$VERSION_URL"
+if [ $? -ne 0 ]; then { echo "WGET Failed, aborting: $VERSION_URL" ; exit 1; } fi
 
 else
-    echo "Download failed. Please install 'curl' or 'wget'"
-    exit 2
+echo "Download failed. Please install 'curl' or 'wget'"
+exit 2
 fi
 
 
 ## start file download and update versions
 start_download(){
-    VERSION=$(head -n 1 "$VERSION_FILE_TMP")
-    FILENAME="$DOWNLOAD_DIR/$DATA_FILE.$VERSION"
-    FILENAME_SHA1="$DOWNLOAD_DIR/$DATA_FILE_SHA1.$VERSION"
+VERSION=$(head -n 1 "$VERSION_FILE_TMP")
+FILENAME="$DOWNLOAD_DIR/$DATA_FILE.$VERSION"
+FILENAME_SHA1="$DOWNLOAD_DIR/$DATA_FILE_SHA1.$VERSION"
 
-    if [ "x$CURL" != "x" ]; then
-        $CURL -sSfR -o "$FILENAME" "$SNAPSHOT_URL/$DATA_FILE"
-        $CURL -sSfR -o "$FILENAME_SHA1" "$SNAPSHOT_URL/$DATA_FILE_SHA1"
-    else
-        $WGET -N -O "$FILENAME" "$SNAPSHOT_URL/$DATA_FILE"
-        $WGET -N -O "$FILENAME_SHA1" "$SNAPSHOT_URL/$DATA_FILE_SHA1"
-    fi
+if [ "x$CURL" != "x" ]; then
+$CURL -sSfR -o "$FILENAME" "$SNAPSHOT_URL/$DATA_FILE"
+$CURL -sSfR -o "$FILENAME_SHA1" "$SNAPSHOT_URL/$DATA_FILE_SHA1"
+else
+$WGET -N -O "$FILENAME" "$SNAPSHOT_URL/$DATA_FILE"
+$WGET -N -O "$FILENAME_SHA1" "$SNAPSHOT_URL/$DATA_FILE_SHA1"
+fi
 
-    BASE_FILE=$($BASENAME $DATA_FILE .gz)
+BASE_FILE=$($BASENAME $DATA_FILE .gz)
 
-    if [[ $DATA_FILE =~ .*gz.* ]]; then
-        $GUNZIP -c "$FILENAME" > "$DOWNLOAD_DIR/$BASE_FILE.$VERSION"
-        $RM "$FILENAME"
-    fi
+if [[ $DATA_FILE =~ .*gz.* ]]; then
+$GUNZIP -c "$FILENAME" > "$DOWNLOAD_DIR/$BASE_FILE.$VERSION"
+$RM "$FILENAME"
+fi
 
-    FILENAME=$DOWNLOAD_DIR/$BASE_FILE.$VERSION
-    SHA1SUM_OUT=$($SHA1SUM "$FILENAME")
+FILENAME=$DOWNLOAD_DIR/$BASE_FILE.$VERSION
+SHA1SUM_OUT=$($SHA1SUM "$FILENAME")
 
 
-    if [[ $SHA1SUM_OUT == *$(head -n 1 "$FILENAME_SHA1")* ]]; then
-        echo "Checksum ok"
-        $LN -sf "$DOWNLOAD_DIR/$BASE_FILE.$VERSION" "$DOWNLOAD_DIR/$BASE_FILE"
-        echo "Data downloaded sucesfully: $DATA_FILE"
-    else
-	echo "Checksum mismatch"
-	exit 1
-    fi
+if [[ $SHA1SUM_OUT == *$(head -n 1 "$FILENAME_SHA1")* ]]; then
+echo "Checksum ok"
+$LN -sf "$DOWNLOAD_DIR/$BASE_FILE.$VERSION" "$DOWNLOAD_DIR/$BASE_FILE"
+echo "Data downloaded sucesfully: $DATA_FILE"
+else
+echo "Checksum mismatch"
+exit 1
+fi
 }
 
 ## check version
 if [ -f "$VERSION_FILE" ]; then
-    ## compare the remote and local versions
-    diff "$VERSION_FILE_TMP" "$VERSION_FILE" > /dev/null
+## compare the remote and local versions
+diff "$VERSION_FILE_TMP" "$VERSION_FILE" > /dev/null
 
-    if [ "$?" = "1" ]; then
-        echo "Different version available, start download" ## TODO: check if remote is really newer
-        start_download
-    else
-        echo "Data file is up to date"
-    fi
+if [ "$?" = "1" ]; then
+echo "Different version available, start download" ## TODO: check if remote is really newer
+start_download
 else
-    echo "No previous version found, start download"
-     start_download
+echo "Data file is up to date"
+fi
+else
+echo "No previous version found, start download"
+start_download
 fi
 
 ## Update version file
 if [ -f "$VERSION_FILE_TMP" ]; then
-    $MV "$VERSION_FILE_TMP" "$VERSION_FILE"
+$MV "$VERSION_FILE_TMP" "$VERSION_FILE"
 fi
 
 
 ## Print version
 if [ -f "$VERSION_FILE" ]; then
-    echo "Current version is $(cat "$VERSION_FILE")"
+echo "Current version is $(cat "$VERSION_FILE")"
 else
-    echo "No previous version found"
+echo "No previous version found"
 fi

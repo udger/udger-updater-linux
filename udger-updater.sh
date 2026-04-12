@@ -3,7 +3,7 @@
 display_usage(){
 cat <<EOT
 Usage: $(basename "$0") [-h] [-d <string>] -k <string> [-v4]
-Download a fresh Udger user agent database file
+Download a fresh Udger user agent database file v3 and v4
 
 -k Set subscription key
 (or set the UDGER_SUBSCRIPTION_KEY environment variable)

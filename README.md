@@ -1,5 +1,5 @@
 # Udger data updater for Linux
-udger-updater.sh performs downloading of data file v3.
+udger-updater.sh performs downloading of data file v3 and v4.
 
 ### Features
 - Written in bash
